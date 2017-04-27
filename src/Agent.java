@@ -1,6 +1,7 @@
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
-import java.util.Queue;
+
 
 public class Agent {
     private static final int DCOST = 14;
@@ -8,24 +9,29 @@ public class Agent {
 
     // identifier
     private int id;
-    // map with cells: blocked cells are just null Cell values in grid
-    private Cell [][] grid;
+    // dimensions of the grid
+    private int x, y;
     // start position
-    private int startI, startJ;
+    private int si, sj;
     // end position
-    private int endI, endJ;
+    private int ei, ej;
     // path for independent A*
-    private Queue<Cell> path;
+    private Cell[] path;
+    // cost of current path
+    private int pathCost;
+    // length of current path
+    private int pathLength;
 
-    public Agent(int id, Cell [][] grid, int startI, int startJ, int endI, int endJ, int[][] blocked) {
+    public Agent(int id, int x, int y, int si, int sj, int ei, int ej) {
         this.id = id;
-        this.grid = grid;
-        this.startI = startI;
-        this.startJ = startJ;
-        this.endI = endI;
-        this.endJ = endJ;
+        this.x = x;
+        this.y = y;
+        this.si = si;
+        this.sj = sj;
+        this.ei = ei;
+        this.ej = ej;
         // run A* to determine the independent path
-        this.path = AStar(grid.length, grid[0].length, startI, startJ, endI, endJ, blocked);
+        AStar();
     }
 
     // returns the id of a robot
@@ -34,13 +40,18 @@ public class Agent {
     }
 
     // returns orig A* path of robot
-    public Queue<Cell> getPath() {
+    public Cell[] getPath() {
         return this.path;
     }
 
-    // blocked cells are set to null in grid representation
-    private void setBlocked(int i, int j){
-        grid[i][j] = null;
+    // returns the path cost
+    public int getPathCost() {
+        return this.pathCost;
+    }
+
+    // returns the path length
+    public int getPathLength() {
+        return this.pathLength;
     }
 
     // helper to perform A* updates
@@ -55,19 +66,11 @@ public class Agent {
         }
     }
 
-    /*
-    Params :
-    id = robot number
-    x, y = Board's dimensions
-    si, sj = start location's x and y coordinates
-    ei, ej = end location's x and y coordinates
-    int[][] blocked = array containing inaccessible cell coordinates
-    */
-    public Queue<Cell> AStar(int x, int y, int si, int sj, int ei, int ej, int[][] blocked){
+    // runs A* and sets the path and pathCost instance variables
+    public void AStar(){
         //Reset
-        grid = new Cell[x][y];
+        Cell [][] grid = new Cell[x][y];
         boolean [][] closed = new boolean[x][y];
-        path = new LinkedList<>();
         PriorityQueue<Cell> open = new PriorityQueue<>((Object o1, Object o2) -> {
             Cell c1 = (Cell)o1;
             Cell c2 = (Cell)o2;
@@ -76,39 +79,37 @@ public class Agent {
                     c1.finalCost > c2.finalCost ? 1 : 0;
         });
 
-        //Set start position
-        startI = si;
-        startJ = sj;
-
-        //Set End Location
-        endI = ei;
-        endJ = ej;
-
         for(int i = 0; i < x; ++i) {
             for(int j = 0; j < y; ++j) {
                 grid[i][j] = new Cell(i, j);
-                grid[i][j].heuristicCost = Math.abs(i - endI) + Math.abs(j - endJ);
+                grid[i][j].heuristicCost = Math.abs(i - ei) + Math.abs(j - ej);
             }
         }
         grid[si][sj].finalCost = 0;
-           
-        // set blocked cells
-        for(int i = 0; i < blocked.length; ++i){
-            setBlocked(blocked[i][0], blocked[i][1]);
+
+        System.out.println("Grid: ");
+        for(int i=0;i<x;++i){
+            for(int j=0;j<y;++j){
+                if(i==si&&j==sj)System.out.print("SO  "); //Source
+                else if(i==ei && j==ej)System.out.print("DE  ");  //Destination
+                else if(grid[i][j]!=null)System.out.printf("%-3d ", 0);
+                else System.out.print("BL  ");
+            }
+            System.out.println();
         }
+        System.out.println();
 
         // add the start location to open list.
-        open.add(grid[startI][startJ]);
+        open.add(grid[si][sj]);
 
         // performs the A* search
         Cell current;
         while(true) {
             current = open.poll();
-            System.out.println(current);
             if(current == null) break;
             closed[current.i][current.j] = true;
 
-            if(current.equals(grid[endI][endJ])){
+            if(current.equals(grid[ei][ej])){
                 break;
             }
 
@@ -154,25 +155,56 @@ public class Agent {
             }
         }
 
-        if(closed[endI][endJ]) {
-            //Trace back the path
-            Cell c = grid[endI][endJ];
-            path.add(c);
+        System.out.println("\nScores for cells: ");
+        for(int i=0;i<x;++i){
+            for(int j=0;j<x;++j){
+                if(grid[i][j]!=null)System.out.printf("%-3d ", grid[i][j].finalCost);
+                else System.out.print("BL  ");
+            }
+            System.out.println();
+        }
+        System.out.println();
+
+        pathCost = 0;
+        int score = 0;
+        int pathLength = 1;
+        if(closed[ei][ej]) {
+            // first pass: determine path length and cost
+            Cell c = grid[ei][ej];
             while(c.parent != null) {
-                path.add(c.parent);
+                pathLength ++;
+                score = Math.abs(c.i - c.parent.i) + Math.abs(c.j - c.parent.j);
+                if (score == 1) pathCost += VCOST;
+                else if (score == 2) pathCost += DCOST;
                 c = c.parent;
             }
-        } else {
-            return null;
-        }
+            this.pathCost = pathCost;
+            this.pathLength = pathLength;
 
-        return path;
+            c = grid[ei][ej];
+            path = new Cell[pathLength];
+            path[pathLength - 1] = c;
+            // second pass: add to path
+            while (c.parent != null) {
+                pathLength--;
+                path[pathLength - 1] = c.parent;
+                c = c.parent;
+            }
+
+        } else {
+            this.pathCost = -1;
+            return;
+        }
+        this.path = path;
     }
 
     public static void main(String[] args) throws Exception{
-        Cell [][] grid = new Cell[5][5];
-        Agent robot = new Agent(1, grid, 0, 0, 3, 2, new int[][]{{0,4},{2,2},{3,1},{3,3}});
-        for (Cell c : robot.getPath())
-            System.out.println(c);
+        Agent robot = new Agent(1, 5, 5, 0, 0, 3, 2);
+        Cell [] path = robot.getPath();
+        for (int i = 0; i < path.length; i++) {
+            System.out.println(path[i]);
+        }
+        System.out.println();
+        System.out.println(robot.getPathCost());
     }
 }
