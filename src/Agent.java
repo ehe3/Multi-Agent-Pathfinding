@@ -20,6 +20,8 @@ public class Agent {
     private int pathCost;
     // length of current path
     private int pathLength;
+    // determine if not merged
+    private boolean single;
 
     public Agent(int id, int x, int y, int si, int sj, int ei, int ej) {
         this.id = id;
@@ -29,6 +31,7 @@ public class Agent {
         this.sj = sj;
         this.ei = ei;
         this.ej = ej;
+        this.single = true;
         // run A* to determine the independent path
         AStar(null);
     }
@@ -43,15 +46,27 @@ public class Agent {
         return this.path;
     }
 
+    // sets a path for the robot
+    public void setPath(Cell[] c) { this.path = c; }
+
     // returns the path cost
     public int getPathCost() {
         return this.pathCost;
     }
 
+    // set the path cost
+    public void setPathCost(int pc) { this.pathCost = pc; }
+
     // returns the path length
     public int getPathLength() {
         return this.pathLength;
     }
+
+    // returns if an agent is in a singular group
+    public boolean isSingle() {return this.single; }
+
+    // sets a robot to not single
+    public void unsingle() {this.single = false; }
 
     // helper to perform A* updates
     private void checkAndUpdateCost(Cell current, Cell t, int cost, PriorityQueue<Cell> open, boolean[][] closed, HashMap<Integer, Cell[]> cat){
