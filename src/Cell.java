@@ -6,6 +6,7 @@ public class Cell{
     int heuristicCost = 0; // h-cost
     int finalCost = 0; // f-cost
     int i, j;
+    int distance; // distance from source
     Cell parent; // maintain pointers for path
 
     Cell(int i, int j) {

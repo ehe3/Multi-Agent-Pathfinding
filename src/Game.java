@@ -51,11 +51,26 @@ public class Game {
         }
 
         if (success) System.out.println("Success!");
+        else {
+            for (Agent a : agents) {
+                if (a.getID() == 1) {
+                    int bound = a.getPathCost();
+                    System.out.println(bound);
+                    a.AStar(cat);
+                    System.out.println(a.getPathCost());
+                    if (a.getPathCost() != bound) System.out.println("failed replan");
+                    else {
+                        for (Cell c : a.getPath())
+                            System.out.println(c);
+                    }
+                }
+            }
+        }
     }
 
     public static void main(String[] args) {
         LinkedList<Agent> a = new LinkedList<>();
-        Agent r1 = new Agent(1, 5, 5, 0, 0, 4, 4);
+        Agent r1 = new Agent(1, 5, 5, 0, 0, 3, 2);
         Agent r2 = new Agent(2, 5, 5, 4, 4, 0, 0);
         a.add(r1);
         a.add(r2);

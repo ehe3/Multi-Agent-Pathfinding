@@ -1,7 +1,6 @@
-import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.PriorityQueue;
-
 
 public class Agent {
     private static final int DCOST = 14;
@@ -31,7 +30,7 @@ public class Agent {
         this.ei = ei;
         this.ej = ej;
         // run A* to determine the independent path
-        AStar();
+        AStar(null);
     }
 
     // returns the id of a robot
@@ -55,19 +54,33 @@ public class Agent {
     }
 
     // helper to perform A* updates
-    private void checkAndUpdateCost(Cell current, Cell t, int cost, PriorityQueue<Cell> open, boolean[][] closed){
+    private void checkAndUpdateCost(Cell current, Cell t, int cost, PriorityQueue<Cell> open, boolean[][] closed, HashMap<Integer, Cell[]> cat){
         if(t == null || closed[t.i][t.j]) return;
-        int t_final_cost = t.heuristicCost +cost;
+        int t_final_cost = t.heuristicCost + cost;
         boolean inOpen = open.contains(t);
         if(!inOpen || t_final_cost < t.finalCost){
-            t.finalCost = t_final_cost;
-            t.parent = current;
-            if(!inOpen) open.add(t);
+            if (cat == null || !inCAT(cat, current.distance + 1, t.i, t.j)) {
+                t.finalCost = t_final_cost;
+                t.parent = current;
+                t.distance = current.distance + 1;
+                if (!inOpen) open.add(t);
+            }
         }
     }
 
+    // helper to check collision-avoidance table
+    public boolean inCAT(HashMap<Integer, Cell[]> cat, int timestep, int x, int y) {
+        for (Integer id : cat.keySet()) {
+            if (id != this.id) {
+                Cell[] p = cat.get(id);
+                if (p.length > timestep && p[timestep - 1].toString().equals("[" + x + ", " + y + "]")) return true;
+            }
+        }
+        return false;
+    }
+
     // runs A* and sets the path and pathCost instance variables
-    public void AStar(){
+    public void AStar(HashMap<Integer, Cell[]> cat){
         //Reset
         Cell [][] grid = new Cell[x][y];
         boolean [][] closed = new boolean[x][y];
@@ -85,7 +98,9 @@ public class Agent {
                 grid[i][j].heuristicCost = Math.abs(i - ei) + Math.abs(j - ej);
             }
         }
-        grid[si][sj].finalCost = 0;
+
+        grid[si][sj].finalCost = 0; // initialize starting node
+        grid[si][sj].distance = 1;
 
         System.out.println("Grid: ");
         for(int i=0;i<x;++i){
@@ -114,43 +129,53 @@ public class Agent {
             }
 
             Cell t;
+            int timestep;
+
             if(current.i - 1 >= 0){
                 t = grid[current.i - 1][current.j];
-                checkAndUpdateCost(current, t, current.finalCost + VCOST, open, closed);
+                if (cat == null || !inCAT(cat, t.distance + 1, current.i - 1, current.j))
+                    checkAndUpdateCost(current, t, current.finalCost + VCOST, open, closed, cat);
 
                 if(current.j - 1 >= 0){
                     t = grid[current.i - 1][current.j - 1];
-                    checkAndUpdateCost(current, t, current.finalCost + DCOST, open, closed);
+                    if (cat == null || !inCAT(cat, t.distance + 1, current.i - 1, current.j - 1))
+                        checkAndUpdateCost(current, t, current.finalCost + DCOST, open, closed, cat);
                 }
 
                 if(current.j + 1 < grid[0].length) {
                     t = grid[current.i - 1][current.j + 1];
-                    checkAndUpdateCost(current, t, current.finalCost + DCOST, open, closed);
+                    if (cat == null || !inCAT(cat, t.distance + 1, current.i - 1, current.j + 1))
+                        checkAndUpdateCost(current, t, current.finalCost + DCOST, open, closed, cat);
                 }
             }
 
             if(current.j - 1 >= 0){
                 t = grid[current.i][current.j - 1];
-                checkAndUpdateCost(current, t, current.finalCost + VCOST, open, closed);
+                if (cat == null || !inCAT(cat, t.distance + 1, current.i, current.j - 1))
+                    checkAndUpdateCost(current, t, current.finalCost + VCOST, open, closed, cat);
             }
 
             if(current.j + 1 < grid[0].length){
                 t = grid[current.i][current.j + 1];
-                checkAndUpdateCost(current, t, current.finalCost + VCOST, open, closed);
+                if (cat == null || !inCAT(cat, t.distance + 1, current.i, current.j + 1))
+                    checkAndUpdateCost(current, t, current.finalCost + VCOST, open, closed, cat);
             }
 
             if(current.i + 1 < grid.length){
                 t = grid[current.i + 1][current.j];
-                checkAndUpdateCost(current, t, current.finalCost + VCOST, open, closed);
+                if (cat == null || !inCAT(cat, t.distance + 1, current.i + 1, current.j))
+                    checkAndUpdateCost(current, t, current.finalCost + VCOST, open, closed, cat);
 
                 if(current.j - 1 >= 0){
                     t = grid[current.i + 1][current.j - 1];
-                    checkAndUpdateCost(current, t, current.finalCost + DCOST, open, closed);
+                    if (cat == null || !inCAT(cat, t.distance + 1, current.i + 1, current.j - 1))
+                        checkAndUpdateCost(current, t, current.finalCost + DCOST, open, closed, cat);
                 }
 
                 if(current.j + 1 < grid[0].length){
                     t = grid[current.i + 1][current.j + 1];
-                    checkAndUpdateCost(current, t, current.finalCost + DCOST, open, closed);
+                    if (cat == null || !inCAT(cat, t.distance + 1, current.i + 1, current.j + 1))
+                        checkAndUpdateCost(current, t, current.finalCost + DCOST, open, closed, cat);
                 }
             }
         }
@@ -167,30 +192,23 @@ public class Agent {
 
         pathCost = 0;
         int score = 0;
-        int pathLength = 1;
         if(closed[ei][ej]) {
-            // first pass: determine path length and cost
+            // determine path length and cost
             Cell c = grid[ei][ej];
+            this.pathLength = c.distance;
+            path = new Cell[this.pathLength];
+
+            int count = c.distance;
+            path[count - 1] = c;
             while(c.parent != null) {
-                pathLength ++;
+                count--;
                 score = Math.abs(c.i - c.parent.i) + Math.abs(c.j - c.parent.j);
                 if (score == 1) pathCost += VCOST;
                 else if (score == 2) pathCost += DCOST;
+                path[count - 1] = c.parent;
                 c = c.parent;
             }
             this.pathCost = pathCost;
-            this.pathLength = pathLength;
-
-            c = grid[ei][ej];
-            path = new Cell[pathLength];
-            path[pathLength - 1] = c;
-            // second pass: add to path
-            while (c.parent != null) {
-                pathLength--;
-                path[pathLength - 1] = c.parent;
-                c = c.parent;
-            }
-
         } else {
             this.pathCost = -1;
             return;
