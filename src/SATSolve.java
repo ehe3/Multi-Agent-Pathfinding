@@ -4,11 +4,10 @@
 
 import org.sat4j.core.VecInt;
 import org.sat4j.minisat.SolverFactory;
-import org.sat4j.specs.ContradictionException;
-import org.sat4j.specs.IProblem;
-import org.sat4j.specs.ISolver;
-import org.sat4j.specs.TimeoutException;
+import org.sat4j.specs.*;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 
@@ -82,19 +81,21 @@ public class SATSolve {
             Agent a = agents.get(id);
             // set the start positions
             solver.addClause(new VecInt(new int[]{mapInt(1, getVertexNumber(a.getSI(), a.getSJ(), this.l), id)}));
+            // set the end positions
+            solver.addClause(new VecInt(new int[]{mapInt(this.bound, getVertexNumber(a.getEI(), a.getEJ(), this.l), id)}));
 
-            // end position at at least one vertex in time bound
-            int [] endPosClause = new int[this.bound];
-            int endV = getVertexNumber(a.getEI(), a.getEJ(), this.l);
-            for (int t = 1; t <= this.bound; t++)
-                endPosClause[t - 1] = mapInt(t, endV, id);
-            solver.addClause(new VecInt(endPosClause));
-
-            // does not move after end vertex is hit
-            for (int j = 1; j < this.bound; j++) {
-                for (int k = j + 1; k <= this.bound; k++ )
-                solver.addClause(new VecInt(new int[]{-1 * mapInt(j, endV, id), mapInt(k, endV, id)}));
-            }
+//            // end position at at least one vertex in time bound
+//            int [] endPosClause = new int[this.bound];
+//            int endV = getVertexNumber(a.getEI(), a.getEJ(), this.l);
+//            for (int t = 1; t <= this.bound; t++)
+//                endPosClause[t - 1] = mapInt(t, endV, id);
+//            solver.addClause(new VecInt(endPosClause));
+//
+//            // does not move after end vertex is hit
+//            for (int j = 1; j < this.bound; j++) {
+//                for (int k = j + 1; k <= this.bound; k++ )
+//                solver.addClause(new VecInt(new int[]{-1 * mapInt(j, endV, id), mapInt(k, endV, id)}));
+//            }
 
             // an agent is placed in exactly one vertex at each time step
             for (int n = 1; n < this.bound; n++) {
@@ -314,39 +315,90 @@ public class SATSolve {
         }
 
         IProblem problem = solver;
+//        if (problem.isSatisfiable()) {
+//            System.out.println("Satisfiable !");
+//            HashMap<Integer, String[]> paths = new HashMap<>();
+//            for (int num = 1; num <= this.agents; num++) {
+//                String[] p = new String[this.bound];
+//                paths.put(num, p);
+//            }
+//            for (int i = 1; i <= this.agents * this.bound * this.vertices; i++) {
+//                if (problem.model(i)) {
+//                    Triple t = getTriple(i);
+//                    String[] x = paths.get(t.getK());
+//                    x[t.getI() - 1] = getCoordinate(t.getJ(), this.l);
+//                }
+//            }
+//            for (int k = 1; k <= this.agents; k++) {
+//                System.out.print(k + ": ");
+//                for (String s : paths.get(k))
+//                    System.out.print(s + " ");
+//                System.out.println();
+//            }
+//        } else {
+//            System.out.println("Unsatisfiable !");
+//        }
+
         if (problem.isSatisfiable()) {
-            System.out.println("Satisfiable !");
-            HashMap<Integer, String[]> paths = new HashMap<>();
+            HashMap<Integer, ArrayList<String>> paths = new HashMap<>();
             for (int num = 1; num <= this.agents; num++) {
-                String[] p = new String[this.bound];
+                ArrayList<String> p = new ArrayList<>();
                 paths.put(num, p);
             }
-            for (int i = 1; i <= this.agents * this.bound * this.vertices; i++) {
-                if (problem.model(i)) {
-                    Triple t = getTriple(i);
-                    String[] x = paths.get(t.getK());
-                    x[t.getI() - 1] = getCoordinate(t.getJ(), this.l);
+            for (int i : conflicts) {
+                Agent a = agents.get(i);
+                int origBound = this.bound;
+                IConstr lastFailure = null;
+                boolean needToRemove = true;
+                while (problem.isSatisfiable()) {
+                    origBound--;
+                    try {
+                        lastFailure = solver.addClause(new VecInt(new int[]{mapInt(origBound, getVertexNumber(a.getEI(), a.getEJ(), this.l), i)}));
+                    }
+                    catch (ContradictionException e) {
+                        needToRemove = false;
+                        break;
+                    }
+                }
+                if (needToRemove) solver.removeConstr(lastFailure);
+
+                if (problem.isSatisfiable()) {
+                    for (int k = (i - 1) * this.bound * this.vertices + 1; k <= i * this.bound * this.vertices; k++) {
+                        if (problem.model(k)) {
+                            Triple t = getTriple(k);
+                            ArrayList<String> x = paths.get(t.getK());
+                            String curr = getCoordinate(t.getJ(), this.l);
+                            x.add(curr);
+                        }
+                    }
                 }
             }
-            for (int k = 1; k <= this.agents; k++) {
-                System.out.print(k + ": ");
-                for (String s : paths.get(k))
+
+            for (int i : conflicts) {
+                ArrayList<String> p = paths.get(i);
+                for (int j = this.bound - 1; j > 0; j--) {
+                    if (p.get(j).equals(p.get(j - 1)))
+                        p.remove(j);
+                    else {
+                        break;
+                    }
+                }
+                System.out.print(i + ":");
+                for (String s : paths.get(i)) {
                     System.out.print(s + " ");
+                }
                 System.out.println();
             }
-        } else {
-            System.out.println("Unsatisfiable !");
+        }
+        else {
+            System.out.println("Not satisfiable");
         }
     }
 
-
-
     public static void main (String[] args) throws ContradictionException, TimeoutException {
         SATSolve s = new SATSolve(10, 25 ,2);
-
-
-        Agent r1 = new Agent(1, 5,4, 4, 0, 0);
-        Agent r2 = new Agent(2, 5,0, 0, 3, 2);
+        Agent r1 = new Agent(1, 5,0, 0, 4, 4);
+        Agent r2 = new Agent(2, 5,4, 4, 0, 0);
         LinkedList<Integer> ids = new LinkedList<>();
         ids.add(1);
         ids.add(2);
