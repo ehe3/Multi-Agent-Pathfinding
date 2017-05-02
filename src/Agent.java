@@ -1,5 +1,5 @@
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.PriorityQueue;
 
 public class Agent {
@@ -8,14 +8,14 @@ public class Agent {
 
     // identifier
     private int id;
-    // dimensions of the grid
-    private int x, y;
+    // gridLength
+    private int l;
     // start position
     private int si, sj;
     // end position
     private int ei, ej;
     // path for independent A*
-    private Cell[] path;
+    private ArrayList<Cell> path;
     // cost of current path
     private int pathCost;
     // length of current path
@@ -23,10 +23,9 @@ public class Agent {
     // determine if not merged
     private boolean single;
 
-    public Agent(int id, int x, int y, int si, int sj, int ei, int ej) {
+    public Agent(int id, int l, int si, int sj, int ei, int ej) {
         this.id = id;
-        this.x = x;
-        this.y = y;
+        this.l = l;
         this.si = si;
         this.sj = sj;
         this.ei = ei;
@@ -41,13 +40,25 @@ public class Agent {
         return id;
     }
 
+    // return si
+    public int getSI() { return this.si; }
+
+    // return sj
+    public int getSJ() { return this.sj; }
+
+    // return ei
+    public int getEI() { return this.ei; }
+
+    // return sj
+    public int getEJ() { return this.ej; }
+
     // returns orig A* path of robot
-    public Cell[] getPath() {
+    public ArrayList<Cell> getPath() {
         return this.path;
     }
 
     // sets a path for the robot
-    public void setPath(Cell[] c) { this.path = c; }
+    public void setPath(ArrayList<Cell> c) { this.path = c; }
 
     // returns the path cost
     public int getPathCost() {
@@ -69,7 +80,7 @@ public class Agent {
     public void unsingle() {this.single = false; }
 
     // helper to perform A* updates
-    private void checkAndUpdateCost(Cell current, Cell t, int cost, PriorityQueue<Cell> open, boolean[][] closed, HashMap<Integer, Cell[]> cat){
+    private void checkAndUpdateCost(Cell current, Cell t, int cost, PriorityQueue<Cell> open, boolean[][] closed, HashMap<Integer, ArrayList<Cell>> cat){
         if(t == null || closed[t.i][t.j]) return;
         int t_final_cost = t.heuristicCost + cost;
         boolean inOpen = open.contains(t);
@@ -84,21 +95,21 @@ public class Agent {
     }
 
     // helper to check collision-avoidance table
-    public boolean inCAT(HashMap<Integer, Cell[]> cat, int timestep, int x, int y) {
+    public boolean inCAT(HashMap<Integer, ArrayList<Cell>> cat, int timestep, int x, int y) {
         for (Integer id : cat.keySet()) {
             if (id != this.id) {
-                Cell[] p = cat.get(id);
-                if (p.length > timestep && p[timestep - 1].toString().equals("[" + x + ", " + y + "]")) return true;
+                ArrayList<Cell> p = cat.get(id);
+                if (p.size() > timestep && p.get(timestep - 1).toString().equals("[" + x + ", " + y + "]")) return true;
             }
         }
         return false;
     }
 
     // runs A* and sets the path and pathCost instance variables
-    public void AStar(HashMap<Integer, Cell[]> cat){
+    public void AStar(HashMap<Integer, ArrayList<Cell>> cat){
         //Reset
-        Cell [][] grid = new Cell[x][y];
-        boolean [][] closed = new boolean[x][y];
+        Cell [][] grid = new Cell[l][l];
+        boolean [][] closed = new boolean[l][l];
         PriorityQueue<Cell> open = new PriorityQueue<>((Object o1, Object o2) -> {
             Cell c1 = (Cell)o1;
             Cell c2 = (Cell)o2;
@@ -107,8 +118,8 @@ public class Agent {
                     c1.finalCost > c2.finalCost ? 1 : 0;
         });
 
-        for(int i = 0; i < x; ++i) {
-            for(int j = 0; j < y; ++j) {
+        for(int i = 0; i < l; ++i) {
+            for(int j = 0; j < l; ++j) {
                 grid[i][j] = new Cell(i, j);
                 grid[i][j].heuristicCost = Math.abs(i - ei) + Math.abs(j - ej);
             }
@@ -118,8 +129,8 @@ public class Agent {
         grid[si][sj].distance = 1;
 
         System.out.println("Grid: ");
-        for(int i=0;i<x;++i){
-            for(int j=0;j<y;++j){
+        for(int i=0;i<l;++i){
+            for(int j=0;j<l;++j){
                 if(i==si&&j==sj)System.out.print("SO  "); //Source
                 else if(i==ei && j==ej)System.out.print("DE  ");  //Destination
                 else if(grid[i][j]!=null)System.out.printf("%-3d ", 0);
@@ -196,8 +207,8 @@ public class Agent {
         }
 
         System.out.println("\nScores for cells: ");
-        for(int i=0;i<x;++i){
-            for(int j=0;j<x;++j){
+        for(int i=0;i<l;++i){
+            for(int j=0;j<l;++j){
                 if(grid[i][j]!=null)System.out.printf("%-3d ", grid[i][j].finalCost);
                 else System.out.print("BL  ");
             }
@@ -211,16 +222,18 @@ public class Agent {
             // determine path length and cost
             Cell c = grid[ei][ej];
             this.pathLength = c.distance;
-            path = new Cell[this.pathLength];
+            path = new ArrayList<>(this.pathLength);
+            for (int i = 0; i < this.pathLength; i++)
+                path.add(null);
 
             int count = c.distance;
-            path[count - 1] = c;
+            path.set(count - 1, c);
             while(c.parent != null) {
                 count--;
                 score = Math.abs(c.i - c.parent.i) + Math.abs(c.j - c.parent.j);
                 if (score == 1) pathCost += VCOST;
                 else if (score == 2) pathCost += DCOST;
-                path[count - 1] = c.parent;
+                path.set(count - 1, c.parent);
                 c = c.parent;
             }
             this.pathCost = pathCost;
@@ -232,10 +245,10 @@ public class Agent {
     }
 
     public static void main(String[] args) throws Exception{
-        Agent robot = new Agent(1, 5, 5, 0, 0, 3, 2);
-        Cell [] path = robot.getPath();
-        for (int i = 0; i < path.length; i++) {
-            System.out.println(path[i]);
+        Agent robot = new Agent(1, 5, 0, 0, 3, 2);
+        ArrayList<Cell> path = robot.getPath();
+        for (int i = 0; i < path.size(); i++) {
+            System.out.println(path.get(i));
         }
         System.out.println();
         System.out.println(robot.getPathCost());

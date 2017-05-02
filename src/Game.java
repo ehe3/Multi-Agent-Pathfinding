@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 
@@ -8,19 +9,20 @@ public class Game {
 
     // agents in the game
     private HashMap<Integer, Agent> agents;
-    // dimensions of the board
-    private int x, y;
+    // board length
+    private int l;
     // collision avoidance table
-    private HashMap<Integer, Cell[]> cat;
+    private HashMap<Integer, ArrayList<Cell>> cat;
     // max path length
     private int mpl;
     // number of agents
     private int num;
+    // keep track of groups
+    private UnionFind groups;
 
-    public Game(int x, int y) {
+    public Game(int l) {
         this.agents = new HashMap<Integer, Agent>();
-        this.x = x;
-        this.y = y;
+        this.l = l;
         this.num = 0;
     }
 
@@ -35,10 +37,10 @@ public class Game {
         for (int i = 0; i < this.mpl; i++) {
             HashMap<String, Integer> checker = new HashMap<>();
             for (int j = 1; j <= agents.size(); j++) {
-                Cell[] p = cat.get(j);
+                ArrayList<Cell> p = cat.get(j);
 
-                if (i >= p.length) continue;
-                String currCell = p[i].toString();
+                if (i >= p.size()) continue;
+                String currCell = p.get(i).toString();
                 if (!checker.containsKey(currCell))
                     checker.put(currCell, j);
                 else {
@@ -54,6 +56,8 @@ public class Game {
     }
 
     public void run() {
+        this.groups = new UnionFind(this.num);
+
         cat = new HashMap<>();
         int maxPathLength = 0;
         for (int i = 1; i <= num; i++) {
@@ -72,38 +76,43 @@ public class Game {
             // first agent
             int i = c.get(0);
             Agent a = agents.get(i);
-            int bound1 = a.getPathCost();
-            Cell[] oldPath1 = a.getPath();
-            a.AStar(cat);
-            // replan for first fails
-            if (a.getPathCost() != bound1) {
-                a.setPath(oldPath1);
-                a.setPathCost(bound1);
-                // try to replan second
-                int j = c.get(1);
-                Agent b = agents.get(j);
-                int bound2 = b.getPathCost();
-                Cell[] oldPath2 = b.getPath();
-                b.AStar(cat);
-                // replan for second fails
-                if (b.getPathCost() != bound2) {
-                    b.setPath(oldPath2);
-                    b.setPathCost(bound2);
-                    System.out.println("No Successful Replan");
-                    break;
-                }
-                // replan for second succeeds
-                else {
-                    cat.remove(j);
-                    cat.put(j, b.getPath());
+            // second agent
+            int j = c.get(1);
+            Agent b = agents.get(j);
+
+            //only if both are single use ID replan
+            if (a.isSingle() && b.isSingle()) {
+
+                int bound1 = a.getPathCost();
+                ArrayList<Cell> oldPath1 = a.getPath();
+                a.AStar(cat);
+                // replan for first fails
+                if (a.getPathCost() != bound1) {
+                    a.setPath(oldPath1);
+                    a.setPathCost(bound1);
+                    // try to replan second
+                    int bound2 = b.getPathCost();
+                    ArrayList<Cell> oldPath2 = b.getPath();
+                    b.AStar(cat);
+                    // replan for second fails
+                    if (b.getPathCost() != bound2) {
+                        b.setPath(oldPath2);
+                        b.setPathCost(bound2);
+                        System.out.println("No Successful Replan");
+                        break;
+                    }
+                    // replan for second succeeds + update cat
+                    else {
+                        cat.remove(j);
+                        cat.put(j, b.getPath());
+                        c = detectCollision();
+                    }
+                } else {
+                    // replan for first succeeds + update cat
+                    cat.remove(i);
+                    cat.put(i, a.getPath());
                     c = detectCollision();
                 }
-            }
-            else {
-                // replan for first succeeds + update cat
-                cat.remove(i);
-                cat.put(i, a.getPath());
-                c = detectCollision();
             }
         }
 
@@ -133,13 +142,13 @@ public class Game {
     }
 
     public static void main(String[] args) {
-        Game game = new Game(5, 5);
-        Agent r1 = new Agent(1, 5, 5, 0, 0, 4, 4);
-        Agent r2 = new Agent(2, 5, 5, 4, 4, 0, 0);
-        //Agent r3 = new Agent(3, 5, 5, 4, 2 ,2 ,3);
+        Game game = new Game(5);
+        Agent r1 = new Agent(1, 5,4, 4, 0, 0);
+        Agent r2 = new Agent(2, 5,0, 0, 3, 2);
+        Agent r3 = new Agent(3, 5,4, 2 ,2 ,3);
         game.add(r1);
         game.add(r2);
-        //game.add(r3);
+        game.add(r3);
         game.run();
     }
 
