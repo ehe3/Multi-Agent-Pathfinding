@@ -6,7 +6,6 @@ import org.sat4j.core.VecInt;
 import org.sat4j.minisat.SolverFactory;
 import org.sat4j.specs.*;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -32,12 +31,14 @@ public class SATSolve {
     private int vertices;
     private int agents;
     private int l;
+    private Cell[][] grid;
 
-    public SATSolve(int bound, int vertices, int agents) {
+    public SATSolve(int bound, int gridLength, int agents, Cell[][] grid) {
         this.bound = bound;
-        this.vertices = vertices;
+        this.vertices = gridLength * gridLength;
         this.agents = agents;
-        this.l = (int) Math.sqrt(vertices);
+        this.grid = grid;
+        this.l = gridLength;
     }
 
     public int mapInt(int time, int vertex, int agent) {
@@ -57,12 +58,15 @@ public class SATSolve {
         return l * y + (x + 1);
     }
 
-    public String getCoordinate(int vnum, int l) {
-        int x = (vnum - 1 + l) % l;
-        return "(" + x + "," + ((vnum - x) / l) + ")";
+    public int getXC(int vnum, int l) {
+        return (vnum - 1 + l) % l;
     }
 
-    public void solve(LinkedList<Integer> conflictIDs, HashMap<Integer, Agent> agents) throws ContradictionException, TimeoutException {
+    public int getYC(int vnum, int l) {
+        return ((vnum - ((vnum - 1 + l) % l)) / l);
+    }
+
+    public boolean solve(LinkedList<Integer> conflictIDs, HashMap<Integer, Agent> agents, HashMap<Integer, ArrayList<Cell>> cat, int totalAgents) throws ContradictionException, TimeoutException {
         final int MAXVAR = 1000000;
         final int NBCLAUSES = 500000;
 
@@ -83,33 +87,27 @@ public class SATSolve {
             solver.addClause(new VecInt(new int[]{mapInt(1, getVertexNumber(a.getSI(), a.getSJ(), this.l), id)}));
             // set the end positions
             solver.addClause(new VecInt(new int[]{mapInt(this.bound, getVertexNumber(a.getEI(), a.getEJ(), this.l), id)}));
+        }
 
-//            // end position at at least one vertex in time bound
-//            int [] endPosClause = new int[this.bound];
-//            int endV = getVertexNumber(a.getEI(), a.getEJ(), this.l);
-//            for (int t = 1; t <= this.bound; t++)
-//                endPosClause[t - 1] = mapInt(t, endV, id);
-//            solver.addClause(new VecInt(endPosClause));
-//
-//            // does not move after end vertex is hit
-//            for (int j = 1; j < this.bound; j++) {
-//                for (int k = j + 1; k <= this.bound; k++ )
-//                solver.addClause(new VecInt(new int[]{-1 * mapInt(j, endV, id), mapInt(k, endV, id)}));
-//            }
+        // at least one vertex occupied at every time step
+        for (int id : conflicts) {
+            for (int t = 1; t <= this.bound; t++) {
+                int[] oneVertexAtLeast = new int[this.vertices];
+                for (int v = 1; v <= 25; v++) {
+                    oneVertexAtLeast[v - 1] = mapInt(t, v, id);
+                }
+                solver.addClause(new VecInt(oneVertexAtLeast));
+            }
+        }
 
-            // an agent is placed in exactly one vertex at each time step
-            for (int n = 1; n < this.bound; n++) {
-                // not more than one vertex occupied at every time step
-                int [] oneVertexAtLeast = new int[this.vertices];
+        // not more than one vertex occupied at every time step
+        for (int id : conflicts) {
+            for (int t = 1; t <= this.bound; t++) {
                 for (int i = 1; i < this.vertices; i++) {
                     for (int j = i + 1; j <= this.vertices; j++) {
-                        solver.addClause(new VecInt(new int[]{-1 * mapInt(n, i, id), -1 * mapInt(n, j, id)}));
+                        solver.addClause(new VecInt(new int[]{-1 * mapInt(t, i, id), -1 * mapInt(t, j, id)}));
                     }
-                    oneVertexAtLeast[i - 1] = mapInt(n, i, id);
                 }
-                // at least one vertex occupied at every time step
-                oneVertexAtLeast[this.vertices - 1] = mapInt(n, this.vertices, id);
-                solver.addClause(new VecInt(oneVertexAtLeast));
             }
         }
 
@@ -314,35 +312,23 @@ public class SATSolve {
             }
         }
 
-        IProblem problem = solver;
-//        if (problem.isSatisfiable()) {
-//            System.out.println("Satisfiable !");
-//            HashMap<Integer, String[]> paths = new HashMap<>();
-//            for (int num = 1; num <= this.agents; num++) {
-//                String[] p = new String[this.bound];
-//                paths.put(num, p);
-//            }
-//            for (int i = 1; i <= this.agents * this.bound * this.vertices; i++) {
-//                if (problem.model(i)) {
-//                    Triple t = getTriple(i);
-//                    String[] x = paths.get(t.getK());
-//                    x[t.getI() - 1] = getCoordinate(t.getJ(), this.l);
-//                }
-//            }
-//            for (int k = 1; k <= this.agents; k++) {
-//                System.out.print(k + ": ");
-//                for (String s : paths.get(k))
-//                    System.out.print(s + " ");
-//                System.out.println();
-//            }
-//        } else {
-//            System.out.println("Unsatisfiable !");
-//        }
+        // cat avoidance
+        if (cat != null) {
+            for (int i = 1; i <= totalAgents; i++) {
+                if (!conflictIDs.contains(i)) {
+                    ArrayList<Cell> p = cat.get(i);
+                    for (int t = 1; t <= p.size(); t++) {
+                        solver.addClause(new VecInt(new int[]{-1 * mapInt(t, getVertexNumber(p.get(t - 1).i, p.get(t - 1).j, this.l), i)}));
+                    }
+                }
+            }
+        }
 
+        IProblem problem = solver;
         if (problem.isSatisfiable()) {
-            HashMap<Integer, ArrayList<String>> paths = new HashMap<>();
+            HashMap<Integer, ArrayList<Cell>> paths = new HashMap<>();
             for (int num = 1; num <= this.agents; num++) {
-                ArrayList<String> p = new ArrayList<>();
+                ArrayList<Cell> p = new ArrayList<>();
                 paths.put(num, p);
             }
             for (int i : conflicts) {
@@ -366,46 +352,54 @@ public class SATSolve {
                     for (int k = (i - 1) * this.bound * this.vertices + 1; k <= i * this.bound * this.vertices; k++) {
                         if (problem.model(k)) {
                             Triple t = getTriple(k);
-                            ArrayList<String> x = paths.get(t.getK());
-                            String curr = getCoordinate(t.getJ(), this.l);
-                            x.add(curr);
+                            ArrayList<Cell> x = paths.get(t.getK());
+                            x.add(this.grid[getXC(t.getJ(), this.l)][getYC(t.getJ(), this.l)]);
                         }
                     }
                 }
             }
 
             for (int i : conflicts) {
-                ArrayList<String> p = paths.get(i);
+                ArrayList<Cell> p = paths.get(i);
                 for (int j = this.bound - 1; j > 0; j--) {
-                    if (p.get(j).equals(p.get(j - 1)))
+                    if (p.get(j).toString().equals(p.get(j - 1).toString()))
                         p.remove(j);
                     else {
                         break;
                     }
                 }
                 System.out.print(i + ":");
-                for (String s : paths.get(i)) {
+                for (Cell s : paths.get(i)) {
                     System.out.print(s + " ");
                 }
                 System.out.println();
+                Agent a = agents.get(i);
+                a.setPath(p);
+                a.setIncorrect();
             }
+            return true;
         }
         else {
-            System.out.println("Not satisfiable");
+            return false;
         }
     }
 
     public static void main (String[] args) throws ContradictionException, TimeoutException {
-        SATSolve s = new SATSolve(10, 25 ,2);
-        Agent r1 = new Agent(1, 5,0, 0, 4, 4);
-        Agent r2 = new Agent(2, 5,4, 4, 0, 0);
+        Cell [][] grid = new Cell[5][5];
+        for(int i = 0; i < 5; ++i) {
+            for(int j = 0; j < 5; ++j) {
+                grid[i][j] = new Cell(i, j);
+            }
+        }
+        SATSolve s = new SATSolve(10, 5 ,8, grid);
+        Agent r4 = new Agent(4, 5,0, 0, 4, 4);
+        Agent r7 = new Agent(7, 5,4, 4, 0, 0);
         LinkedList<Integer> ids = new LinkedList<>();
-        ids.add(1);
-        ids.add(2);
+        ids.add(4);
+        ids.add(7);
         HashMap<Integer, Agent> agents = new HashMap<>();
-        agents.put(1, r1);
-        agents.put(2, r2);
-        s.solve(ids, agents);
-
+        agents.put(4, r4);
+        agents.put(7, r7);
+        s.solve(ids, agents, null, 8);
     }
 }

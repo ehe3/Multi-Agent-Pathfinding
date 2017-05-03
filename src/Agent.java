@@ -16,6 +16,8 @@ public class Agent {
     private int ei, ej;
     // path for independent A*
     private ArrayList<Cell> path;
+    // if the path cost is correct
+    private boolean correctCost;
     // cost of current path
     private int pathCost;
     // length of current path
@@ -33,6 +35,7 @@ public class Agent {
         this.single = true;
         // run A* to determine the independent path
         AStar(null);
+        this.correctCost = true;
     }
 
     // returns the id of a robot
@@ -74,10 +77,19 @@ public class Agent {
     }
 
     // returns if an agent is in a singular group
-    public boolean isSingle() {return this.single; }
+    public boolean isSingle() { return this.single; }
 
     // sets a robot to not single
-    public void unsingle() {this.single = false; }
+    public void unsingle() { this.single = false; }
+
+    // return whether a cost is correct
+    public boolean isCostCorrect() { return this.correctCost; }
+
+    // sets a robot's cost to incorrect
+    public void setIncorrect() {
+        this.correctCost = false;
+        setPathCost(-1);
+    }
 
     // helper to perform A* updates
     private void checkAndUpdateCost(Cell current, Cell t, int cost, PriorityQueue<Cell> open, boolean[][] closed, HashMap<Integer, ArrayList<Cell>> cat){

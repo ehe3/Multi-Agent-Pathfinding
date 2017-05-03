@@ -114,6 +114,10 @@ public class Game {
                     c = detectCollision();
                 }
             }
+            else {
+                LinkedList<Integer> satReplan = groups.merge(i, j);
+
+            }
         }
 
         for (int i = 1; i <= num; i++) {
