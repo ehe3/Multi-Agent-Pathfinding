@@ -1,14 +1,19 @@
 import java.util.LinkedList;
 
 /**
- * Created by ehe on 4/27/17.
+ * Created by Eric He on 4/27/17.
+ *
+ * A naive disjoint set union data structure to keep track of the merging in the independence detection algorithm.
  */
 
 public class UnionFind {
 
+    // array that keeps track of the robots, robots range from [1, size]
     private int[] x;
+    // total number of agents, all IDs should be less than or equal to this number
     public int size;
 
+    // basic constructor
     public UnionFind (int size) {
         this.size = size;
         x = new int[size];
@@ -16,6 +21,8 @@ public class UnionFind {
             x[i] = i + 1;
     }
 
+    // merges two robots together and returns all of the robots IDs in both groups as a linked list
+    // naive implementation
     public LinkedList<Integer> merge (int a, int b) {
         LinkedList<Integer> group = new LinkedList<>();
         int p1 = find(a);
@@ -29,45 +36,8 @@ public class UnionFind {
         return group;
     }
 
+    // helper method that returns the group representative in the array
     private int find(int i) {
         return x[i - 1];
     }
-
-     //method to help with testing
-    public boolean inSame(int a, int b) {
-        return (find(a) == find(b));
-    }
-
-    public void printArray() {
-        for (int i : x)
-            System.out.print(i + " ");
-        System.out.println();
-    }
-
-    public static void main(String[] args) {
-        UnionFind uf = new UnionFind(9);
-        uf.printArray();
-        System.out.println(uf.inSame(4,5));
-        System.out.println(uf.inSame(2,1));
-        System.out.println(uf.inSame(3,9));
-        System.out.println(uf.inSame(6,2));
-        uf.printArray();
-        uf.merge(1,3);
-        uf.printArray();
-        uf.merge(1,7);
-        uf.printArray();
-        System.out.println(uf.inSame(3,7));
-        uf.merge(2,9);
-        uf.printArray();
-        uf.merge(6,2);
-        uf.printArray();
-        System.out.println(uf.inSame(6, 9));
-        System.out.println(uf.inSame(1, 2));
-        LinkedList<Integer> g = uf.merge(7, 6);
-        System.out.println(uf.inSame(1,2));
-        for (int i : g)
-            System.out.println(i);
-    }
-
-
 }

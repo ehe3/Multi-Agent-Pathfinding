@@ -2,8 +2,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 
+/**
+ * Created by Eric He on 4/24/17.
+ *
+ * Also known as a robot in the mulit-agent pathfinding problem. Each robot is initialized with an independent A*
+ * search path which is required of the independence detection algorithm
+ */
+
 public class Agent {
+    // diagonal costs
     private static final int DCOST = 14;
+    // vertical and horizontal costs
     private static final int VCOST = 10;
 
     // identifier
@@ -25,6 +34,7 @@ public class Agent {
     // determine if not merged
     private boolean single;
 
+    // simple constructor
     public Agent(int id, int l, int si, int sj, int ei, int ej) {
         this.id = id;
         this.l = l;
@@ -108,7 +118,7 @@ public class Agent {
     }
 
     // helper to check collision-avoidance table
-    public boolean inCAT(HashMap<Integer, ArrayList<Cell>> cat, int timestep, int x, int y) {
+    private boolean inCAT(HashMap<Integer, ArrayList<Cell>> cat, int timestep, int x, int y) {
         for (Integer id : cat.keySet()) {
             if (id != this.id) {
                 ArrayList<Cell> p = cat.get(id);
@@ -134,24 +144,13 @@ public class Agent {
         for(int i = 0; i < l; ++i) {
             for(int j = 0; j < l; ++j) {
                 grid[i][j] = new Cell(i, j);
+                // heuristic function, could be changed but admissible for now
                 grid[i][j].heuristicCost = Math.abs(i - ei) + Math.abs(j - ej);
             }
         }
 
         grid[si][sj].finalCost = 0; // initialize starting node
         grid[si][sj].distance = 1;
-
-        System.out.println("Grid: ");
-        for(int i=0;i<l;++i){
-            for(int j=0;j<l;++j){
-                if(i==si&&j==sj)System.out.print("SO  "); //Source
-                else if(i==ei && j==ej)System.out.print("DE  ");  //Destination
-                else if(grid[i][j]!=null)System.out.printf("%-3d ", 0);
-                else System.out.print("BL  ");
-            }
-            System.out.println();
-        }
-        System.out.println();
 
         // add the start location to open list.
         open.add(grid[si][sj]);
@@ -168,8 +167,7 @@ public class Agent {
             }
 
             Cell t;
-            int timestep;
-
+            // casework to check edges
             if(current.i - 1 >= 0){
                 t = grid[current.i - 1][current.j];
                 if (cat == null || !inCAT(cat, t.distance + 1, current.i - 1, current.j))
@@ -219,18 +217,7 @@ public class Agent {
             }
         }
 
-        System.out.println("\nScores for cells: ");
-        for(int i=0;i<l;++i){
-            for(int j=0;j<l;++j){
-                if(grid[i][j]!=null)System.out.printf("%-3d ", grid[i][j].finalCost);
-                else System.out.print("BL  ");
-            }
-            System.out.println();
-        }
-        System.out.println();
-
-        pathCost = 0;
-        int score = 0;
+        int cost = 0;
         if(closed[ei][ej]) {
             // determine path length and cost
             Cell c = grid[ei][ej];
@@ -241,29 +228,18 @@ public class Agent {
 
             int count = c.distance;
             path.set(count - 1, c);
+            // backtrack to calculate path
             while(c.parent != null) {
                 count--;
-                score = Math.abs(c.i - c.parent.i) + Math.abs(c.j - c.parent.j);
-                if (score == 1) pathCost += VCOST;
-                else if (score == 2) pathCost += DCOST;
+                int score = Math.abs(c.i - c.parent.i) + Math.abs(c.j - c.parent.j);
+                if (score == 1) cost += VCOST;
+                else if (score == 2) cost += DCOST;
                 path.set(count - 1, c.parent);
                 c = c.parent;
             }
-            this.pathCost = pathCost;
+            this.pathCost = cost;
         } else {
             this.pathCost = -1;
-            return;
         }
-        this.path = path;
-    }
-
-    public static void main(String[] args) throws Exception{
-        Agent robot = new Agent(1, 5, 0, 0, 3, 2);
-        ArrayList<Cell> path = robot.getPath();
-        for (int i = 0; i < path.size(); i++) {
-            System.out.println(path.get(i));
-        }
-        System.out.println();
-        System.out.println(robot.getPathCost());
     }
 }
