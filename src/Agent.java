@@ -33,6 +33,7 @@ public class Agent {
         this.ei = ei;
         this.ej = ej;
         this.single = true;
+        this.pathLength = -1;
         // run A* to determine the independent path
         AStar(null);
         this.correctCost = true;

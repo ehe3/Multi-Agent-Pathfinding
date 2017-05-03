@@ -31,13 +31,11 @@ public class SATSolve {
     private int vertices;
     private int agents;
     private int l;
-    private Cell[][] grid;
 
-    public SATSolve(int bound, int gridLength, int agents, Cell[][] grid) {
+    public SATSolve(int bound, int gridLength, int agents) {
         this.bound = bound;
         this.vertices = gridLength * gridLength;
         this.agents = agents;
-        this.grid = grid;
         this.l = gridLength;
     }
 
@@ -66,7 +64,7 @@ public class SATSolve {
         return ((vnum - ((vnum - 1 + l) % l)) / l);
     }
 
-    public boolean solve(LinkedList<Integer> conflictIDs, HashMap<Integer, Agent> agents, HashMap<Integer, ArrayList<Cell>> cat, int totalAgents) throws ContradictionException, TimeoutException {
+    public int solve(LinkedList<Integer> conflictIDs, HashMap<Integer, Agent> agents, HashMap<Integer, ArrayList<Cell>> cat) throws ContradictionException, TimeoutException {
         final int MAXVAR = 1000000;
         final int NBCLAUSES = 500000;
 
@@ -314,7 +312,7 @@ public class SATSolve {
 
         // cat avoidance
         if (cat != null) {
-            for (int i = 1; i <= totalAgents; i++) {
+            for (int i = 1; i <= this.agents; i++) {
                 if (!conflictIDs.contains(i)) {
                     ArrayList<Cell> p = cat.get(i);
                     for (int t = 1; t <= p.size(); t++) {
@@ -353,12 +351,13 @@ public class SATSolve {
                         if (problem.model(k)) {
                             Triple t = getTriple(k);
                             ArrayList<Cell> x = paths.get(t.getK());
-                            x.add(this.grid[getXC(t.getJ(), this.l)][getYC(t.getJ(), this.l)]);
+                            x.add(new Cell(getXC(t.getJ(), this.l), getYC(t.getJ(), this.l)));
                         }
                     }
                 }
             }
 
+            int mpl = -1;
             for (int i : conflicts) {
                 ArrayList<Cell> p = paths.get(i);
                 for (int j = this.bound - 1; j > 0; j--) {
@@ -376,11 +375,14 @@ public class SATSolve {
                 Agent a = agents.get(i);
                 a.setPath(p);
                 a.setIncorrect();
+                cat.remove(i);
+                cat.put(i, a.getPath());
+                mpl = Math.max(mpl, p.size());
             }
-            return true;
+            return mpl;
         }
         else {
-            return false;
+            return -1;
         }
     }
 
@@ -391,7 +393,7 @@ public class SATSolve {
                 grid[i][j] = new Cell(i, j);
             }
         }
-        SATSolve s = new SATSolve(10, 5 ,8, grid);
+        SATSolve s = new SATSolve(10, 5 ,8);
         Agent r4 = new Agent(4, 5,0, 0, 4, 4);
         Agent r7 = new Agent(7, 5,4, 4, 0, 0);
         LinkedList<Integer> ids = new LinkedList<>();
@@ -400,6 +402,6 @@ public class SATSolve {
         HashMap<Integer, Agent> agents = new HashMap<>();
         agents.put(4, r4);
         agents.put(7, r7);
-        s.solve(ids, agents, null, 8);
+        System.out.println(s.solve(ids, agents, null));
     }
 }

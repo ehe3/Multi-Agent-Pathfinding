@@ -1,3 +1,6 @@
+import org.sat4j.specs.ContradictionException;
+import org.sat4j.specs.TimeoutException;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -50,13 +53,23 @@ public class Game {
                 }
             }
         }
-
         return null;
-
     }
 
-    public void run() {
+    private void printCat() {
+        for (int i = 1; i <= num; i++) {
+            ArrayList<Cell> p = this.cat.get(i);
+            System.out.print(i + ": ");
+            for (Cell c : p)
+                System.out.print(c + " ");
+            System.out.println();
+        }
+    }
+
+    public void run() throws TimeoutException, ContradictionException {
+        System.out.println("HELLO: " + this.num);
         this.groups = new UnionFind(this.num);
+
 
         cat = new HashMap<>();
         int maxPathLength = 0;
@@ -98,8 +111,20 @@ public class Game {
                     if (b.getPathCost() != bound2) {
                         b.setPath(oldPath2);
                         b.setPathCost(bound2);
-                        System.out.println("No Successful Replan");
-                        break;
+                        LinkedList<Integer> satReplan = groups.merge(i, j);
+                        a.unsingle();
+                        b.unsingle();
+                        SATSolve sat = new SATSolve(2 * l, l, this.num);
+                        int s = sat.solve(satReplan, agents, cat);
+                        if (s == -1) {
+                            System.out.println("Even SAT Failed :(");
+                            break;
+                        }
+                        else {
+                            this.mpl = Math.max(s, this.mpl);
+                        }
+                        c = detectCollision();
+                        System.out.println(c != null);
                     }
                     // replan for second succeeds + update cat
                     else {
@@ -116,43 +141,45 @@ public class Game {
             }
             else {
                 LinkedList<Integer> satReplan = groups.merge(i, j);
-
+                a.unsingle();
+                b.unsingle();
+                SATSolve sat = new SATSolve(2 * l, l, this.num);
+                int s = sat.solve(satReplan, agents, cat);
+                if (s == -1) {
+                    System.out.println("Even SAT Failed :(");
+                    break;
+                }
+                else {
+                    this.mpl = Math.max(s, this.mpl);
+                }
+                c = detectCollision();
             }
         }
-
+        System.out.println();
+        System.out.println("FINAL PATHS");
+        System.out.println();
         for (int i = 1; i <= num; i++) {
+            System.out.print(i + ":");
             Agent a = agents.get(i);
             for (Cell k : a.getPath()) {
                 System.out.print(k + " ");
             }
             System.out.println();
         }
-//        if (success) System.out.println("Success!");
-//        else {
-//            for (Agent a : agents) {
-//                if (a.getID() == 1) {
-//                    int bound = a.getPathCost();
-//                    System.out.println(bound);
-//                    a.AStar(cat);
-//                    System.out.println(a.getPathCost());
-//                    if (a.getPathCost() != bound) System.out.println("failed replan");
-//                    else {
-//                        for (Cell c : a.getPath())
-//                            System.out.println(c);
-//                    }
-//                }
-//            }
-//        }
+
+        System.out.println("Max Path Length of this Game is: " + this.mpl);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws TimeoutException, ContradictionException {
         Game game = new Game(5);
-        Agent r1 = new Agent(1, 5,4, 4, 0, 0);
-        Agent r2 = new Agent(2, 5,0, 0, 3, 2);
-        Agent r3 = new Agent(3, 5,4, 2 ,2 ,3);
+        Agent r1 = new Agent(1, 5,0, 0, 0, 4);
+        Agent r2 = new Agent(2, 5,0, 4, 0, 0);
+        Agent r3 = new Agent(3, 5,4, 0 ,4 ,4);
+        Agent r4 = new Agent(4, 5,4, 4 ,4 ,0);
         game.add(r1);
         game.add(r2);
         game.add(r3);
+        game.add(r4);
         game.run();
     }
 
