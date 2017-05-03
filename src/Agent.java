@@ -20,7 +20,7 @@ public class Agent {
     // gridLength
     private int l;
     // start position
-    private int si, sj;
+    public int si, sj;
     // end position
     private int ei, ej;
     // path for independent A*
@@ -45,6 +45,20 @@ public class Agent {
         this.single = true;
         this.pathLength = -1;
         // run A* to determine the independent path
+        AStar(null);
+        this.correctCost = true;
+    }
+
+    // random agent
+    public Agent(int id, int l) {
+        this.id = id;
+        this.l = l;
+        this.si = (int) (Math.random() * l);
+        this.sj = (int) (Math.random() * l);
+        this.ei = (int) (Math.random() * l);
+        this.ej = (int) (Math.random() * l);
+        this.single = true;
+        this.pathLength = -1;
         AStar(null);
         this.correctCost = true;
     }
@@ -118,11 +132,11 @@ public class Agent {
     }
 
     // helper to check collision-avoidance table
-    private boolean inCAT(HashMap<Integer, ArrayList<Cell>> cat, int timestep, int x, int y) {
+    public boolean inCAT(HashMap<Integer, ArrayList<Cell>> cat, int timestep, int x, int y) {
         for (Integer id : cat.keySet()) {
             if (id != this.id) {
                 ArrayList<Cell> p = cat.get(id);
-                if (p.size() > timestep && p.get(timestep - 1).toString().equals("[" + x + ", " + y + "]")) return true;
+                if (p.size() >= timestep && p.get(timestep - 1).toString().equals("[" + x + ", " + y + "]")) return true;
             }
         }
         return false;
@@ -241,5 +255,34 @@ public class Agent {
         } else {
             this.pathCost = -1;
         }
+    }
+
+    public static void main(String[] args) {
+//        Agent a = new Agent(1, 3, 2,2, 0,1);
+//        Agent b = new Agent(2, 3, 2, 1, 1,1);
+//        Agent d = new Agent(2, 3, 1, 0, 0,2);
+//        for (Cell c : a.getPath()) {
+//            System.out.print(c + " ");
+//        }
+//        System.out.println();
+//        for (Cell c : b.getPath()) {
+//            System.out.print(c + " ");
+//        }
+//        System.out.println();
+//        for (Cell c : d.getPath()) {
+//            System.out.print(c + " ");
+//        }
+//        System.out.println();
+//        HashMap<Integer, ArrayList<Cell>> cat = new HashMap<>();
+//        cat.put(1, a.getPath());
+//        cat.put(2, b.getPath());
+//        cat.put(3, d.getPath());
+//
+//        a.AStar(cat);
+//        System.out.println();
+//        for (Cell c : a.getPath()) {
+//            System.out.print(c + " ");
+//        }
+//        System.out.println(a.inCAT(cat, 2, 1, 1 ));
     }
 }

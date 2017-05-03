@@ -28,22 +28,34 @@ public class Game {
     private int num;
     // keep track of groups
     private UnionFind groups;
-    // total collisions resolved;
-    private int c;
+    // total SAT collisions resolved
+    private int SATc;
+    // total ID collisions resolved
+    private int IDc;
+    // makespan bound
+    private int bound;
 
     // simple constructor
-    public Game(int l) {
+    public Game(int l, int bound) {
         this.agents = new HashMap<>();
         this.l = l;
         this.num = 0;
         this.maxReplan = 1;
-        this.c = -1;
+        this.SATc = 0;
+        this.IDc = 0;
+        this.bound = bound;
     }
 
-    // adds an agent to the game
-    public void add(Agent a) {
+    // adds an agent to the game, assumes agents with lesser IDs from 1 already added in
+    public boolean add(Agent a) {
+        for (int i = 1; i < a.getID(); i++) {
+            Agent b = agents.get(i);
+            if ((a.getSI() == b.getSI() && a.getSJ() == b.getSJ()) || (a.getEI() == b.getEI() && a.getEJ() == b.getEJ()))
+                return false;
+        }
         this.agents.put(a.getID(), a);
         this.num++;
+        return true;
     }
 
     // return current max path length
@@ -56,15 +68,19 @@ public class Game {
         return this.maxReplan;
     }
 
-    // return the number of collisions resolved during the algorithm
-    public int getNumCollisionsResolved() {
-        return this.c;
+    // return the number of SAT collisions resolved during the algorithm
+    public int getNumSATCollisionsResolved() {
+        return this.SATc;
+    }
+
+    // return the number of ID collisions resolved during the algorithm
+    public int getNumIDCollisionsResolved() {
+        return this.IDc;
     }
 
     // goes through the collision avoidance table to see if there are currently any collisions
     // collisions occur when two robots are at the same vertex at the same time
     private LinkedList<Integer> detectCollision () {
-        this.c++;
         LinkedList<Integer> collides = new LinkedList<>();
 
         for (int i = 0; i < this.mpl; i++) {
@@ -129,11 +145,17 @@ public class Game {
                         b.setPathCost(bound2);
                         LinkedList<Integer> satReplan = groups.merge(i, j);
                         // set tentative makespan bound
-                        SATSolve sat = new SATSolve(2 * l, l, this.num);
+                        SATSolve sat = new SATSolve(this.bound, l, this.num);
                         int s = sat.solve(satReplan, agents, cat);
-                        if (s == -1) { return false; }
+                        if (s == -1) {
+                            System.out.println();
+                            System.out.println("FAILED");
+                            System.out.println();
+                            return false;
+                        }
                         else {
                             // if ID does not work use SAT-solver
+                            this.SATc++;
                             a.unsingle();
                             b.unsingle();
                             a.setIncorrect();
@@ -145,12 +167,14 @@ public class Game {
                     }
                     // replan for second succeeds + update cat
                     else {
+                        this.IDc++;
                         cat.remove(j);
                         cat.put(j, b.getPath());
                         c = detectCollision();
                     }
                 } else {
                     // replan for first succeeds + update cat
+                    this.IDc++;
                     cat.remove(i);
                     cat.put(i, a.getPath());
                     c = detectCollision();
@@ -160,9 +184,14 @@ public class Game {
             else {
                 LinkedList<Integer> satReplan = groups.merge(i, j);
                 // set tentative makespan bound
-                SATSolve sat = new SATSolve(2 * l, l, this.num);
+                SATSolve sat = new SATSolve(this.bound, l, this.num);
                 int s = sat.solve(satReplan, agents, cat);
-                if (s == -1) { return false; }
+                if (s == -1) {
+                    System.out.println();
+                    System.out.println("FAILED");
+                    System.out.println();
+                    return false;
+                }
                 else {
                     a.unsingle();
                     b.unsingle();
@@ -189,20 +218,19 @@ public class Game {
 
         System.out.println("Max Path Length of this Game is: " + getMPL());
         System.out.println("Max Re-plan size of this Game is: " + getMaxReplan());
-        System.out.println("Number of collisions sovled is: " + getNumCollisionsResolved());
+        System.out.println("Number of ID collisions solved is: " + getNumIDCollisionsResolved());
+        System.out.println("Number of SAT collisions solved is: " + getNumSATCollisionsResolved());
         return true;
     }
 
     public static void main(String[] args) throws TimeoutException, ContradictionException {
-        Game game = new Game(5);
-        Agent r1 = new Agent(1, 5,0, 0, 0, 4);
-        Agent r2 = new Agent(2, 5,0, 4, 0, 0);
-        Agent r3 = new Agent(3, 5,4, 0 ,4 ,4);
-        Agent r4 = new Agent(4, 5,4, 4 ,4 ,0);
+        Game game = new Game(3, 6);
+        Agent r1 = new Agent(1, 3,2, 2, 0, 1);
+        Agent r2 = new Agent(2, 3,2, 1, 1, 1);
+        Agent r3 = new Agent(3, 3,1, 0 ,0 ,2);
         game.add(r1);
         game.add(r2);
         game.add(r3);
-        game.add(r4);
         game.run();
     }
 }

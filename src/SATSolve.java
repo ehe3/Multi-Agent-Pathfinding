@@ -99,259 +99,260 @@ public class SATSolve {
             conflicts[i] = conflictIDs.get(i);
         }
 
-        // add all of the SAT-constraints, most taken from Surynek
-        // add starting positions and ending positions
-        for (int id : conflicts) {
-            Agent a = agents.get(id);
-            // set the start positions
-            solver.addClause(new VecInt(new int[]{mapInt(1, getVertexNumber(a.getSI(), a.getSJ(), this.l), id)}));
-            // set the end positions
-            solver.addClause(new VecInt(new int[]{mapInt(this.bound, getVertexNumber(a.getEI(), a.getEJ(), this.l), id)}));
-        }
+        try {
+            // add all of the SAT-constraints, most taken from Surynek
+            // add starting positions and ending positions
+            for (int id : conflicts) {
+                Agent a = agents.get(id);
+                // set the start positions
+                solver.addClause(new VecInt(new int[]{mapInt(1, getVertexNumber(a.getSI(), a.getSJ(), this.l), id)}));
+                // set the end positions
+                solver.addClause(new VecInt(new int[]{mapInt(this.bound, getVertexNumber(a.getEI(), a.getEJ(), this.l), id)}));
+            }
 
-        // at least one vertex occupied at every time step
-        for (int id : conflicts) {
+            // at least one vertex occupied at every time step
+            for (int id : conflicts) {
+                for (int t = 1; t <= this.bound; t++) {
+                    int[] oneVertexAtLeast = new int[this.vertices];
+                    for (int v = 1; v <= vertices; v++) {
+                        oneVertexAtLeast[v - 1] = mapInt(t, v, id);
+                    }
+                    solver.addClause(new VecInt(oneVertexAtLeast));
+                }
+            }
+
+            // not more than one vertex occupied at every time step
+            for (int id : conflicts) {
+                for (int t = 1; t <= this.bound; t++) {
+                    for (int i = 1; i < this.vertices; i++) {
+                        for (int j = i + 1; j <= this.vertices; j++) {
+                            solver.addClause(new VecInt(new int[]{-1 * mapInt(t, i, id), -1 * mapInt(t, j, id)}));
+                        }
+                    }
+                }
+            }
+
+            // at most one agent is placed in each vertex at each time step
             for (int t = 1; t <= this.bound; t++) {
-                int[] oneVertexAtLeast = new int[this.vertices];
-                for (int v = 1; v <= 25; v++) {
-                    oneVertexAtLeast[v - 1] = mapInt(t, v, id);
-                }
-                solver.addClause(new VecInt(oneVertexAtLeast));
-            }
-        }
-
-        // not more than one vertex occupied at every time step
-        for (int id : conflicts) {
-            for (int t = 1; t <= this.bound; t++) {
-                for (int i = 1; i < this.vertices; i++) {
-                    for (int j = i + 1; j <= this.vertices; j++) {
-                        solver.addClause(new VecInt(new int[]{-1 * mapInt(t, i, id), -1 * mapInt(t, j, id)}));
+                for (int v = 1; v <= this.vertices; v++) {
+                    for (int i = 0; i < conflicts.length - 1; i++) {
+                        for (int j = i + 1; j < conflicts.length; j++) {
+                            int[] x = new int[]{-1 * mapInt(t, v, conflicts[i]), -1 * mapInt(t, v, conflicts[j])};
+                            solver.addClause(new VecInt(x));
+                        }
                     }
                 }
             }
-        }
 
-        // at most one agent is placed in each vertex at each time step
-        for (int t = 1; t <= this.bound; t++) {
-            for (int v = 1; v <= this.vertices; v++) {
-                for (int i = 0; i < conflicts.length - 1; i++) {
-                    for (int j = i + 1; j < conflicts.length; j++) {
-                        solver.addClause(new VecInt(new int[]{-1 * mapInt(t, v, conflicts[i]), -1 * mapInt(t, v, conflicts[j])}));
+            // an agent relocates to some of its neighbors or makes no move
+            for (int id : conflicts) {
+                for (int t = 1; t < this.bound; t++) {
+                    for (int vx = 0; vx < this.l; vx++) {
+                        for (int vy = 0; vy < this.l; vy++) {
+                            // top left corner
+                            if (vx == 0 && vy == 0) {
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy + 1, this.l), id)
+                                }));
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy + 1, this.l), id)
+                                }));
+                            }
+                            // top right corner
+                            else if (vx == this.l - 1 && vy == 0) {
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id)
+                                }));
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id)
+                                }));
+                            }
+                            // bottom left corner
+                            else if (vx == 0 && vy == this.l - 1) {
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy - 1, this.l), id),
+                                }));
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy - 1, this.l), id),
+                                }));
+                            }
+                            // bottom right corner
+                            else if (vx == this.l - 1 && vy == this.l - 1) {
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy - 1, this.l), id)
+                                }));
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy - 1, this.l), id)
+                                }));
+                            }
+                            // top edge
+                            else if (vy == 0) {
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy + 1, this.l), id)
+                                }));
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy + 1, this.l), id)
+                                }));
+                            }
+                            // bottom edge
+                            else if (vy == this.l - 1) {
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy - 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy - 1, this.l), id)
+                                }));
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy - 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy - 1, this.l), id)
+                                }));
+                            }
+                            // left edge
+                            else if (vx == 0) {
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy - 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy + 1, this.l), id)
+                                }));
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy - 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy + 1, this.l), id)
+                                }));
+                            }
+                            // right edge
+                            else if (vy == this.l - 1) {
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id)
+                                }));
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id)
+                                }));
+                            }
+                            // normal
+                            else {
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy - 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy - 1, this.l), id),
+                                        mapInt(t + 1, getVertexNumber(vx + 1, vy + 1, this.l), id)
+                                }));
+                                solver.addClause(new VecInt(new int[]{
+                                        -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy - 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy - 1, this.l), id),
+                                        mapInt(t, getVertexNumber(vx + 1, vy + 1, this.l), id)
+                                }));
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        // an agent relocates to some of its neighbors or makes no move
-        for (int id: conflicts) {
-            for (int t = 1; t < this.bound; t++) {
-                for (int vx = 0; vx < this.l; vx++) {
-                    for (int vy = 0; vy < this.l; vy++) {
-                        // top left corner
-                        if (vx == 0 && vy == 0) {
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy  + 1, this.l), id)
-                            }));
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy  + 1, this.l), id)
-                            }));
-                        }
-                        // top right corner
-                        else if (vx == this.l - 1 && vy == 0) {
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id)
-                            }));
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id)
-                            }));
-                        }
-                        // bottom left corner
-                        else if (vx == 0 && vy == this.l - 1) {
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy - 1, this.l), id),
-                            }));
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy - 1, this.l), id),
-                            }));
-                        }
-                        // bottom right corner
-                        else if (vx == this.l - 1 && vy == this.l - 1) {
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy - 1, this.l), id)
-                            }));
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t  + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy - 1, this.l), id)
-                            }));
-                        }
-                        // top edge
-                        else if (vy == 0) {
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy + 1, this.l), id)
-                            }));
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy + 1, this.l), id)
-                            }));
-                        }
-                        // bottom edge
-                        else if (vy == this.l - 1) {
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy - 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy - 1, this.l), id)
-                            }));
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy - 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy - 1, this.l), id)
-                            }));
-                        }
-                        // left edge
-                        else if (vx == 0) {
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy - 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy + 1, this.l), id)
-                            }));
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy - 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy + 1, this.l), id)
-                            }));
-                        }
-                        // right edge
-                        else if (vy == this.l - 1) {
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id)
-                            }));
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id)
-                            }));
-                        }
-                        // normal
-                        else {
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy - 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx - 1, vy + 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy - 1, this.l), id),
-                                    mapInt(t + 1, getVertexNumber(vx + 1, vy + 1, this.l), id)
-                            }));
-                            solver.addClause(new VecInt(new int[]{
-                                    -1 * mapInt(t + 1, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy - 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy - 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx - 1, vy + 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy - 1, this.l), id),
-                                    mapInt(t, getVertexNumber(vx + 1, vy + 1, this.l), id)
-                            }));
+            // if cat is provided add simple clauses that avoid collisions
+            if (cat != null) {
+                int count = 0;
+                for (int i = 1; i <= this.agents; i++) {
+                    if (!conflictIDs.contains(i)) {
+                        ArrayList<Cell> p = cat.get(i);
+                        for (int t = 1; t <= p.size(); t++) {
+                            solver.addClause(new VecInt(new int[]{-1 * mapInt(t, getVertexNumber(p.get(t - 1).i, p.get(t - 1).j, this.l), i)}));
+                            count++;
                         }
                     }
                 }
             }
         }
-
-        // if cat is provided add simple clauses that avoid collisions
-        if (cat != null) {
-            for (int i = 1; i <= this.agents; i++) {
-                if (!conflictIDs.contains(i)) {
-                    ArrayList<Cell> p = cat.get(i);
-                    for (int t = 1; t <= p.size(); t++) {
-                        solver.addClause(new VecInt(new int[]{-1 * mapInt(t, getVertexNumber(p.get(t - 1).i, p.get(t - 1).j, this.l), i)}));
-                    }
-                }
-            }
+        catch (ContradictionException e) {
+            return -1;
         }
 
         // check to see if the problem is satisfiable
-        IProblem problem = solver;
-        if (problem.isSatisfiable()) {
-            // data structure to keep track of the paths for all conflicting agents
-            HashMap<Integer, ArrayList<Cell>> paths = new HashMap<>();
-            for (int num = 1; num <= this.agents; num++) {
-                ArrayList<Cell> p = new ArrayList<>();
-                paths.put(num, p);
-            }
+        if (solver.isSatisfiable()) {
             // go through conflicting agents and determine their paths, use bound reduction to get shorter paths
             for (int i : conflicts) {
                 Agent a = agents.get(i);
@@ -362,7 +363,7 @@ public class SATSolve {
                 // while the problem is satisfiable, try to reduce the bound
                 // once a failure occurs revert the constraint
                 boolean needToRemove = true;
-                while (problem.isSatisfiable()) {
+                while (solver.isSatisfiable()) {
                     bound--;
                     try {
                         lastFailure = solver.addClause(new VecInt(
@@ -374,46 +375,85 @@ public class SATSolve {
                     }
                 }
                 if (needToRemove) solver.removeConstr(lastFailure);
-                // loop through the prop variable for a specific agent and retrieve the path.
-                if (problem.isSatisfiable()) {
-                    for (int k = (i - 1) * this.bound * this.vertices + 1; k <= i * this.bound * this.vertices; k++) {
-                        if (problem.model(k)) {
-                            Triple t = getTriple(k);
-                            ArrayList<Cell> x = paths.get(t.getK());
-                            x.add(new Cell(getXC(t.getJ(), this.l), getYC(t.getJ(), this.l)));
-                        }
-                    }
-                }
             }
+
 
             // loop through all the paths for final clean-up
             // keep track of makespan for the group
             int mpl = -1;
-            for (int i : conflicts) {
-                ArrayList<Cell> p = paths.get(i);
-                // trim paths
-                for (int j = this.bound - 1; j > 0; j--) {
-                    if (p.get(j).toString().equals(p.get(j - 1).toString()))
-                        p.remove(j);
-                    else {
-                        break;
+            if (solver.isSatisfiable()) {
+                for (int i : conflicts) {
+                    ArrayList<Cell> path = new ArrayList<>();
+                    for (int k = (i - 1) * this.bound * this.vertices + 1; k <= i * this.bound * this.vertices; k++) {
+                        if (solver.model(k)) {
+                            Triple t = getTriple(k);
+                            path.add(new Cell(getXC(t.getJ(), this.l), getYC(t.getJ(), this.l)));
+                        }
                     }
+
+                    // trim paths
+                    for (int j = this.bound - 1; j > 0; j--) {
+                        if (path.get(j).toString().equals(path.get(j - 1).toString()))
+                            path.remove(j);
+                        else {
+                            break;
+                        }
+                    }
+                    // set paths
+                    Agent a = agents.get(i);
+                    a.setPath(path);
+                    a.setIncorrect();
+                    // update cat
+                    if (cat != null) {
+                        cat.remove(i);
+                        cat.put(i, a.getPath());
+                    }
+                    // update makespan
+                    mpl = Math.max(mpl, path.size());
                 }
-                // set paths
-                Agent a = agents.get(i);
-                a.setPath(p);
-                a.setIncorrect();
-                // update cat
-                cat.remove(i);
-                cat.put(i, a.getPath());
-                // update makespan
-                mpl = Math.max(mpl, p.size());
             }
             return mpl;
         }
         else {
             return -1;
         }
+    }
+
+    public static void main(String[] args) throws TimeoutException, ContradictionException {
+        SATSolve s = new SATSolve(6, 3, 3);
+        Agent r1 = new Agent(1, 3,0, 0, 1, 1);
+        for (Cell c : r1.getPath())
+            System.out.print(c + " ");
+        System.out.println();
+        Agent r2 = new Agent(2, 3,2, 0, 1, 2);
+        for (Cell c : r2.getPath())
+            System.out.print(c + " ");
+        System.out.println();
+        Agent r3 = new Agent(3, 3,1, 1 ,0 ,1);
+        for (Cell c : r3.getPath())
+            System.out.print(c + " ");
+        System.out.println();
+
+        LinkedList<Integer> c = new LinkedList<>();
+        c.add(1);
+        c.add(2);
+        c.add(3);
+        HashMap<Integer, Agent> a = new HashMap<>();
+        a.put(1, r1);
+        a.put(2, r2);
+        a.put(3, r3);
+
+        s.solve(c, a, null);
+
+        System.out.println();
+        for (Cell d : r1.getPath())
+            System.out.print(d + " ");
+        System.out.println();
+        for (Cell e : r2.getPath())
+            System.out.print(e + " ");
+        System.out.println();
+        for (Cell f : r3.getPath())
+            System.out.print(f + " ");
     }
 }
 
