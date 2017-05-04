@@ -50,9 +50,12 @@ public class Game {
     public boolean add(Agent a) {
         for (int i = 1; i < a.getID(); i++) {
             Agent b = agents.get(i);
-            if ((a.getSI() == b.getSI() && a.getSJ() == b.getSJ()) || (a.getEI() == b.getEI() && a.getEJ() == b.getEJ()))
+            if ((a.getSI() == b.getSI() && a.getSJ() == b.getSJ()) ||
+                    (a.getEI() == b.getEI() && a.getEJ() == b.getEJ()))
                 return false;
         }
+        if (a.getSI() == a.getEI() && a.getSJ() == a.getEJ())
+            return false;
         this.agents.put(a.getID(), a);
         this.num++;
         return true;
@@ -204,22 +207,22 @@ public class Game {
             }
         }
         // end of conflict resolution
-        System.out.println();
-        System.out.println("FINAL PATHS");
-        System.out.println();
-        for (int i = 1; i <= num; i++) {
-            System.out.print(i + ":");
-            Agent a = agents.get(i);
-            for (Cell k : a.getPath()) {
-                System.out.print(k + " ");
-            }
-            System.out.println();
-        }
+//        System.out.println();
+//        System.out.println("FINAL PATHS");
+//        System.out.println();
+//        for (int i = 1; i <= num; i++) {
+//            System.out.print(i + ":");
+//            Agent a = agents.get(i);
+//            for (Cell k : a.getPath()) {
+//                System.out.print(k + " ");
+//            }
+//            System.out.println();
+//        }
 
-        System.out.println("Max Path Length of this Game is: " + getMPL());
-        System.out.println("Max Re-plan size of this Game is: " + getMaxReplan());
-        System.out.println("Number of ID collisions solved is: " + getNumIDCollisionsResolved());
-        System.out.println("Number of SAT collisions solved is: " + getNumSATCollisionsResolved());
+//        System.out.println("Max Path Length of this Game is: " + getMPL());
+//        System.out.println("Max Re-plan size of this Game is: " + getMaxReplan());
+//        System.out.println("Number of ID collisions solved is: " + getNumIDCollisionsResolved());
+//        System.out.println("Number of SAT collisions solved is: " + getNumSATCollisionsResolved());
         return true;
     }
 
