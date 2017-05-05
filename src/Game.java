@@ -10,6 +10,8 @@ import java.util.LinkedList;
  *
  * A solver and instance creator for the multi-agent pathfinding problem that uses a hybrid independence detection
  * and SAT-solving algorithm.
+ *
+ * The A* search is based off of the code found here: http://www.codebytes.in/2015/02/a-shortest-path-finding-algorithm.html
  */
 
 public class Game {
@@ -206,34 +208,6 @@ public class Game {
                 c = detectCollision();
             }
         }
-        // end of conflict resolution
-//        System.out.println();
-//        System.out.println("FINAL PATHS");
-//        System.out.println();
-//        for (int i = 1; i <= num; i++) {
-//            System.out.print(i + ":");
-//            Agent a = agents.get(i);
-//            for (Cell k : a.getPath()) {
-//                System.out.print(k + " ");
-//            }
-//            System.out.println();
-//        }
-
-//        System.out.println("Max Path Length of this Game is: " + getMPL());
-//        System.out.println("Max Re-plan size of this Game is: " + getMaxReplan());
-//        System.out.println("Number of ID collisions solved is: " + getNumIDCollisionsResolved());
-//        System.out.println("Number of SAT collisions solved is: " + getNumSATCollisionsResolved());
         return true;
-    }
-
-    public static void main(String[] args) throws TimeoutException, ContradictionException {
-        Game game = new Game(3, 6);
-        Agent r1 = new Agent(1, 3,2, 2, 0, 1);
-        Agent r2 = new Agent(2, 3,2, 1, 1, 1);
-        Agent r3 = new Agent(3, 3,1, 0 ,0 ,2);
-        game.add(r1);
-        game.add(r2);
-        game.add(r3);
-        game.run();
     }
 }

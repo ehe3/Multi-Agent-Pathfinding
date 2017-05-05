@@ -335,13 +335,11 @@ public class SATSolve {
 
             // if cat is provided add simple clauses that avoid collisions
             if (cat != null) {
-                int count = 0;
                 for (int i = 1; i <= this.agents; i++) {
                     if (!conflictIDs.contains(i)) {
                         ArrayList<Cell> p = cat.get(i);
                         for (int t = 1; t <= p.size(); t++) {
                             solver.addClause(new VecInt(new int[]{-1 * mapInt(t, getVertexNumber(p.get(t - 1).i, p.get(t - 1).j, this.l), i)}));
-                            count++;
                         }
                     }
                 }
@@ -417,43 +415,6 @@ public class SATSolve {
         else {
             return -1;
         }
-    }
-
-    public static void main(String[] args) throws TimeoutException, ContradictionException {
-        SATSolve s = new SATSolve(6, 3, 3);
-        Agent r1 = new Agent(1, 3,0, 0, 1, 1);
-        for (Cell c : r1.getPath())
-            System.out.print(c + " ");
-        System.out.println();
-        Agent r2 = new Agent(2, 3,2, 0, 1, 2);
-        for (Cell c : r2.getPath())
-            System.out.print(c + " ");
-        System.out.println();
-        Agent r3 = new Agent(3, 3,1, 1 ,0 ,1);
-        for (Cell c : r3.getPath())
-            System.out.print(c + " ");
-        System.out.println();
-
-        LinkedList<Integer> c = new LinkedList<>();
-        c.add(1);
-        c.add(2);
-        c.add(3);
-        HashMap<Integer, Agent> a = new HashMap<>();
-        a.put(1, r1);
-        a.put(2, r2);
-        a.put(3, r3);
-
-        s.solve(c, a, null);
-
-        System.out.println();
-        for (Cell d : r1.getPath())
-            System.out.print(d + " ");
-        System.out.println();
-        for (Cell e : r2.getPath())
-            System.out.print(e + " ");
-        System.out.println();
-        for (Cell f : r3.getPath())
-            System.out.print(f + " ");
     }
 }
 
